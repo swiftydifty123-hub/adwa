@@ -104,3 +104,10 @@ def test_cli_runs(capsys):
     assert main(["clean"]) == 0
     assert main(["startup"]) == 0
     assert "health" in capsys.readouterr().out
+
+
+def test_cpu_hog_reported_per_core_and_self_ignored():
+    snap = _snap(cpu_threads=24, top_cpu=[ProcessInfo(os.getpid(), "python.exe", 90, 10),
+                                          ProcessInfo(6616, "gortex.exe", 99.6, 2000)])
+    titles = [f.title for f in advisor.analyze(snap)]
+    assert titles == ["gortex.exe keeping 1.0 of 24 CPU cores busy"]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 from .sysinfo import Snapshot
@@ -20,6 +21,7 @@ class Finding:
 
 def analyze(snap: Snapshot, startup_count: int | None = None, junk_bytes: int | None = None) -> list[Finding]:
     f: list[Finding] = []
+    own_pid = os.getpid()
 
     if snap.memory_percent >= 90:
         f.append(Finding("critical", f"RAM almost full ({snap.memory_percent:.0f}%)",
@@ -67,9 +69,13 @@ def analyze(snap: Snapshot, startup_count: int | None = None, junk_bytes: int | 
         f.append(Finding("info", f"{junk_bytes / 1024 ** 3:.1f} GB of cleanable junk",
                          "Run `clean --apply` to reclaim it.", 5))
 
-    hogs = [p for p in snap.top_cpu if p.cpu_percent >= 50 and p.name.lower() not in IGNORED_PROCESSES]
+    # Process CPU is measured per core: 100% means one core is fully busy.
+    hogs = [p for p in snap.top_cpu
+            if p.cpu_percent >= 50 and p.pid != own_pid and p.name.lower() not in IGNORED_PROCESSES]
+    threads = max(snap.cpu_threads, 1)
     for p in hogs[:2]:
-        f.append(Finding("info", f"{p.name} using {p.cpu_percent:.0f}% CPU",
+        cores = p.cpu_percent / 100
+        f.append(Finding("info", f"{p.name} keeping {cores:.1f} of {threads} CPU cores busy",
                          f"If you are not using it, close it (PID {p.pid}).", 3))
 
     return f

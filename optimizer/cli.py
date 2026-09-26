@@ -79,8 +79,9 @@ def cmd_scan(args) -> int:
     print(f"  Junk   {human(junk.total_bytes)} cleanable · {len(items)} startup programs")
 
     header("Top processes")
+    threads = max(snap.cpu_threads, 1)
     for p in snap.top_memory:
-        print(f"  {p.name[:28]:<28} {p.memory_mb:>9.1f} MB  {p.cpu_percent:>5.1f}% CPU")
+        print(f"  {p.name[:28]:<28} {p.memory_mb:>9.1f} MB  {p.cpu_percent / threads:>5.1f}% CPU")
 
     header("Findings")
     if not findings:
