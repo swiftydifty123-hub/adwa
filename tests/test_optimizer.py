@@ -117,3 +117,9 @@ def test_python_launcher_parent_is_ignored(monkeypatch):
     monkeypatch.setattr(advisor, "_own_process_family", lambda: {os.getpid(), 63988})
     snap = _snap(top_cpu=[ProcessInfo(63988, "python.exe", 70, 10)])
     assert advisor.analyze(snap) == []
+
+
+def test_same_folder_in_two_categories_counted_once(tmp_path):
+    _touch(tmp_path / "temp" / "a.tmp", 100)
+    report = cleaner.scan_and_clean({"System temp": [tmp_path / "temp"], "User temp": [tmp_path / "temp"]})
+    assert report.total_bytes == 100

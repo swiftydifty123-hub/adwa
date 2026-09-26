@@ -85,11 +85,16 @@ def scan_and_clean(
     now = now or time.time()
     cutoff = now - min_age_hours * 3600
     report = CleanReport(applied=apply)
+    seen: set[str] = set()  # e.g. on Windows the system temp dir is also %LOCALAPPDATA%\Temp
     for name, roots in locations.items():
         result = CategoryResult(name)
         for root in roots:
             if not root.is_dir() or root.is_symlink():
                 continue
+            key = os.path.normcase(os.path.realpath(root))
+            if key in seen:
+                continue
+            seen.add(key)
             for path, st in _iter_files(root):
                 if st.st_mtime > cutoff:
                     continue
