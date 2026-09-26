@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "laptop-optimizer"
+version = "1.0.0"
+description = "Universal laptop optimizer for Windows, macOS and Linux"
+requires-python = ">=3.9"
+dependencies = ["psutil>=5.9"]
+
+[project.scripts]
+optimizer = "optimizer.cli:main"
+
+[tool.setuptools]
+packages = ["optimizer"]
