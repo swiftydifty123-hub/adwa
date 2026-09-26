@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+import psutil
+
 from .sysinfo import Snapshot
 
 # Processes that are normal to see near the top and not worth flagging.
@@ -19,9 +21,29 @@ class Finding:
     penalty: int
 
 
+def _own_process_family() -> set[int]:
+    """PIDs of this optimizer run: itself, its launchers and any helpers.
+
+    On Windows, python.exe is often a launcher stub that starts a second
+    python.exe, so skipping only os.getpid() is not enough.
+    """
+    pids = {os.getpid()}
+    try:
+        me = psutil.Process()
+        pids.update(p.pid for p in me.children(recursive=True))
+        for parent in me.parents():
+            name = (parent.name() or "").lower()
+            if not (name.startswith("python") or name in ("py", "py.exe")):
+                break
+            pids.add(parent.pid)
+    except (psutil.Error, OSError):
+        pass
+    return pids
+
+
 def analyze(snap: Snapshot, startup_count: int | None = None, junk_bytes: int | None = None) -> list[Finding]:
     f: list[Finding] = []
-    own_pid = os.getpid()
+    own_pids = _own_process_family()
 
     if snap.memory_percent >= 90:
         f.append(Finding("critical", f"RAM almost full ({snap.memory_percent:.0f}%)",
@@ -71,7 +93,7 @@ def analyze(snap: Snapshot, startup_count: int | None = None, junk_bytes: int | 
 
     # Process CPU is measured per core: 100% means one core is fully busy.
     hogs = [p for p in snap.top_cpu
-            if p.cpu_percent >= 50 and p.pid != own_pid and p.name.lower() not in IGNORED_PROCESSES]
+            if p.cpu_percent >= 50 and p.pid not in own_pids and p.name.lower() not in IGNORED_PROCESSES]
     threads = max(snap.cpu_threads, 1)
     for p in hogs[:2]:
         cores = p.cpu_percent / 100

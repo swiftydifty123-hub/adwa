@@ -111,3 +111,9 @@ def test_cpu_hog_reported_per_core_and_self_ignored():
                                           ProcessInfo(6616, "gortex.exe", 99.6, 2000)])
     titles = [f.title for f in advisor.analyze(snap)]
     assert titles == ["gortex.exe keeping 1.0 of 24 CPU cores busy"]
+
+
+def test_python_launcher_parent_is_ignored(monkeypatch):
+    monkeypatch.setattr(advisor, "_own_process_family", lambda: {os.getpid(), 63988})
+    snap = _snap(top_cpu=[ProcessInfo(63988, "python.exe", 70, 10)])
+    assert advisor.analyze(snap) == []
